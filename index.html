@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Nexus | Elite Cybersecurity Academy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --accent: #00d2ff;
+            --accent-glow: rgba(0, 210, 255, 0.4);
+            --bg-deep: #02040a;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: #f0f6fc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            scrollbar-width: none;
+        }
+
+        body::-webkit-scrollbar { display: none; }
+
+        .glass {
+            background: var(--glass);
+            backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+        }
+
+        .rounded-xlarge { border-radius: 3rem; }
+        
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        /* Node Grid Aesthetics */
+        .node-cell {
+            aspect-ratio: 1;
+            border-radius: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 800;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .node-cell:hover:not(.locked) {
+            transform: scale(1.15) translateY(-8px);
+            background: linear-gradient(135deg, var(--accent), #0072ff);
+            border-color: var(--accent);
+            box-shadow: 0 20px 40px var(--accent-glow);
+            color: #000;
+            z-index: 10;
+        }
+
+        .node-cell.completed { background: var(--accent); color: #000; border-color: var(--accent); }
+        .node-cell.locked { opacity: 0.1; cursor: not-allowed; filter: blur(1px); }
+
+        .btn-premium {
+            background: linear-gradient(135deg, #fff, #e0e0e0);
+            color: #000;
+            font-weight: 800;
+            transition: all 0.4s ease;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            border-radius: 1.5rem;
+        }
+
+        .btn-premium:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
+            background: #fff;
+        }
+
+        .btn-cyan {
+            background: linear-gradient(135deg, var(--accent), #0072ff);
+            color: #000;
+            font-weight: 800;
+            border-radius: 1.5rem;
+            transition: all 0.4s;
+        }
+
+        .btn-cyan:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px var(--accent-glow);
+        }
+
+        .terminal-shell {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 2rem;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid rgba(0, 210, 255, 0.15);
+        }
+
+        .hidden-view { display: none; }
+        
+        .fade-in { animation: viewReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes viewReveal { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="interface" class="relative z-10 min-h-screen flex flex-col">
+
+        <!-- LOGIN VIEW: ULTRA PREMIUM -->
+        <section id="login-view" class="flex-1 flex items-center justify-center p-6">
+            <div class="glass p-12 md:p-24 rounded-xlarge max-w-2xl w-full text-center shadow-[0_0_100px_rgba(0,0,0,0.5)] border-white/5 fade-in">
+                <div class="mb-14 relative inline-block">
+                    <div class="w-28 h-28 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-[2.5rem] mx-auto mb-8 flex items-center justify-center shadow-2xl rotate-3">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <path d="M12 2L3 7v9c0 5 9 8 9 8s9-3 9-8V7l-9-5z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </div>
+                    <div class="absolute -top-4 -right-4 w-12 h-12 bg-white/5 rounded-full blur-xl"></div>
+                </div>
+
+                <h1 class="text-6xl font-extrabold tracking-tighter mb-4 italic">Cyber<span class="text-cyan-400">Nexus</span></h1>
+                <p class="text-[12px] opacity-40 uppercase tracking-[0.5em] font-bold mb-12">Omni-Sentinel Senior Program</p>
+
+                <div class="space-y-6 max-w-sm mx-auto">
+                    <div class="group">
+                        <input type="text" id="user-codename" placeholder="Identificação de Operador" class="w-full bg-white/5 border border-white/10 rounded-2xl px-8 py-6 focus:outline-none focus:border-cyan-400 transition-all text-center text-xl font-bold tracking-tight">
+                    </div>
+                    <button onclick="handleLoginAction()" class="w-full btn-premium py-6">Estabelecer Conexão</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- DASHBOARD VIEW -->
+        <section id="dashboard-view" class="hidden-view flex-1 flex flex-col fade-in">
+            <nav class="px-12 py-10 flex justify-between items-center glass border-0 border-b border-white/5 sticky top-0 z-50">
+                <div class="flex items-center gap-6">
+                    <span class="text-3xl font-black italic tracking-tighter">CN<span class="text-cyan-400">.</span></span>
+                    <div class="h-10 w-[1.5px] bg-white/10"></div>
+                    <div class="flex flex-col">
+                        <span id="nav-user-id" class="text-sm font-black tracking-widest text-white uppercase">AGENTE</span>
+                        <span id="nav-progress-stats" class="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">NODES: 0 / 600</span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-10">
+                    <div class="flex flex-col items-end gap-2">
+                        <div class="w-64 h-2 bg-white/5 rounded-full overflow-hidden">
+                            <div id="global-progress-bar" class="h-full bg-cyan-400 transition-all duration-1000 shadow-[0_0_15px_var(--accent-glow)]" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <button id="cert-access-btn" disabled onclick="navigateToCertificate()" class="text-[11px] font-black border border-white/10 px-8 py-4 rounded-2xl hover:bg-white hover:text-black transition disabled:opacity-20 uppercase tracking-widest">Certificado Bloqueado</button>
+                    <button onclick="location.reload()" class="opacity-30 hover:opacity-100 transition">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/></svg>
+                    </button>
+                </div>
+            </nav>
+
+            <main class="flex-1 container mx-auto px-6 py-16">
+                <div class="glass p-12 md:p-16 rounded-xlarge shadow-2xl relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-14">
+                        <div>
+                            <h2 class="text-3xl font-black uppercase tracking-tight mb-2">Matriz de Conhecimento</h2>
+                            <p class="text-xs opacity-40 uppercase tracking-widest font-bold">Navegue pelos 600 nós de especialização sênior</p>
+                        </div>
+                        <div class="text-right font-mono text-[10px] opacity-30 italic">ENCRYPTION: AES-X-GOLD</div>
+                    </div>
+                    <div id="module-grid-layout" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-15 gap-4 overflow-y-auto max-h-[650px] pr-6 custom-scroll">
+                        <!-- 600 Nodes injected -->
+                    </div>
+                </div>
+            </main>
+        </section>
+
+        <!-- MODULE DETAIL VIEW -->
+        <section id="module-detail-view" class="hidden-view flex-1 flex flex-col fade-in">
+            <nav class="px-12 py-10 flex justify-between items-center glass border-0 border-b border-white/5 sticky top-0 z-50">
+                <button onclick="returnToDashboard()" class="flex items-center gap-4 hover:text-cyan-400 transition text-sm font-bold uppercase tracking-widest">
+                    <div class="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:border-cyan-400 transition">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    </div>
+                    Mapa Global
+                </button>
+                <div class="text-center">
+                    <p id="mod-cat-label" class="text-[10px] font-black text-cyan-400 uppercase tracking-[0.3em] mb-1">AUDITORIA DE REDE</p>
+                    <h3 id="mod-id-label" class="text-lg font-black uppercase tracking-tighter">ESTAÇÃO DE TRABALHO #001</h3>
+                </div>
+                <div class="w-40"></div> <!-- Spacer for balance -->
+            </nav>
+
+            <main class="flex-1 container mx-auto px-6 py-16 flex flex-col xl:flex-row gap-12">
+                <!-- Content Column -->
+                <div class="flex-1">
+                    <div class="glass p-12 md:p-20 rounded-xlarge shadow-2xl relative overflow-hidden">
+                        <h2 class="text-5xl font-extrabold tracking-tighter mb-10" id="lesson-header-title">Mastering Advanced Nmap</h2>
+                        <div id="lesson-content-body" class="prose prose-invert max-w-none text-xl leading-relaxed opacity-80 mb-14 font-light">
+                            <!-- Lesson Content Injected -->
+                        </div>
+                        
+                        <div class="terminal-shell p-10 mt-12 bg-black/40">
+                            <h4 class="text-[11px] font-black text-cyan-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
+                                <span class="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_10px_var(--accent-glow)] animate-pulse"></span> 
+                                Terminal do Operador: <span id="active-tool-display" class="text-white">NMAP</span>
+                            </h4>
+                            <div id="tool-commands-list" class="space-y-6">
+                                <!-- Command snippets -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="w-full xl:w-96 space-y-8">
+                    <div class="glass p-10 rounded-[2.5rem] shadow-xl">
+                        <h3 class="text-xs font-black uppercase mb-8 opacity-40 tracking-widest border-b border-white/5 pb-4">Protocolos de Estudo</h3>
+                        <button onclick="downloadModulePDF()" class="w-full bg-white/5 border border-white/10 p-6 rounded-3xl text-left hover:border-cyan-400/50 transition-all group mb-6 flex flex-col gap-2">
+                            <span class="text-xs font-black text-cyan-400 group-hover:tracking-widest transition-all uppercase">Material Técnico .PDF</span>
+                            <span class="text-[10px] opacity-40 font-medium">Documento de 3 páginas: Teoria, Ferramentas e Labs Práticos.</span>
+                        </button>
+                        <button onclick="launchExame()" class="w-full btn-cyan py-6 shadow-2xl text-sm tracking-widest">
+                            Iniciar Validação
+                        </button>
+                    </div>
+
+                    <div class="glass p-10 rounded-[2.5rem] h-80 flex flex-col shadow-xl">
+                        <h3 class="text-[11px] font-black uppercase mb-6 opacity-40 tracking-widest flex items-center justify-between">
+                            Oracle AI Interface
+                            <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                        </h3>
+                        <div id="oracle-chat-feed" class="flex-1 overflow-y-auto text-xs space-y-4 opacity-70 font-medium mb-6 pr-3 custom-scroll">
+                            <div class="bg-white/5 p-4 rounded-2xl italic text-[11px]">Canal de telemetria estabelecido. Operador, solicite assistência técnica sobre as ferramentas deste nó.</div>
+                        </div>
+                        <div class="flex gap-3 bg-black/40 p-2 rounded-2xl border border-white/10">
+                            <input type="text" id="oracle-chat-input" placeholder="Solicitar dados..." class="flex-1 bg-transparent text-xs px-4 focus:outline-none">
+                            <button onclick="sendOracleQuery()" class="bg-cyan-500 text-black w-10 h-10 rounded-xl flex items-center justify-center transition hover:scale-105">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </section>
+
+        <!-- EXAM VIEW -->
+        <section id="exam-view" class="hidden-view flex-1 flex items-center justify-center p-6 fade-in">
+            <div class="glass p-16 md:p-24 rounded-xlarge max-w-3xl w-full shadow-[0_0_150px_rgba(0,0,0,0.6)]">
+                <div class="flex items-center gap-6 mb-14">
+                    <div class="w-16 h-16 bg-red-500/10 rounded-3xl flex items-center justify-center border border-red-500/20">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01"/></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-4xl font-extrabold tracking-tight">Validação de Nó #<span id="exam-node-id">0</span></h2>
+                        <p class="text-xs opacity-40 uppercase tracking-widest font-bold">Responda corretamente para descriptografar o progresso</p>
+                    </div>
+                </div>
+                <div id="exam-questions-box" class="space-y-12">
+                    <!-- Question Injected -->
+                </div>
+                <div class="flex gap-6 mt-20">
+                    <button onclick="abortExame()" class="px-10 py-5 rounded-2xl text-xs font-black border border-white/10 hover:bg-white/5 transition uppercase tracking-widest">Abortar</button>
+                    <button onclick="processValidation()" class="btn-cyan flex-1 py-5 text-sm tracking-widest">Submeter Resposta</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- CERTIFICATE VIEW -->
+        <section id="certificate-view" class="hidden-view flex-1 flex flex-col items-center justify-center p-6 fade-in">
+            <div id="cert-printable-container" class="bg-white text-black p-20 md:p-32 rounded shadow-[0_50px_100px_rgba(0,0,0,0.5)] border-[25px] border-double border-blue-900 w-full max-w-5xl relative text-center">
+                <div class="absolute top-10 right-10 w-40 h-40 bg-blue-50 rounded-full blur-3xl opacity-50"></div>
+                <h4 class="text-blue-900 font-bold uppercase tracking-[1.5em] text-[11px] mb-16 opacity-60">Cyber Nexus Academy</h4>
+                <p class="italic text-2xl mb-6 font-serif opacity-70">Pelo presente documento, certificamos com honra que</p>
+                <h1 id="cert-student-name" class="text-5xl md:text-8xl font-black border-b-4 border-black inline-block px-16 pb-6 mb-16 uppercase tracking-tighter">NOME_DO_ALUNO</h1>
+                <p class="text-xl max-w-3xl mx-auto leading-relaxed mb-20 opacity-90 font-light">
+                    Concluiu com maestria absoluta a trilha sênior de especialização <strong>Omni-Sentinel</strong>, totalizando 600 módulos intensivos de treinamento em Cibersegurança, Hacking Ético Profissional e Gestão de Infraestruturas Críticas.
+                </p>
+                <div class="flex justify-between items-end mt-16 px-12 text-[12px] font-black">
+                    <div class="text-left">
+                        <p class="border-b-2 border-black pb-2 mb-2">ID_AUTH: <span id="cert-unique-key" class="text-blue-800">NX-0000-00</span></p>
+                        <p class="opacity-50 uppercase tracking-widest">Nexus Verification Node</p>
+                    </div>
+                    <div class="text-center px-10">
+                        <div class="w-20 h-20 bg-blue-900 mx-auto mb-4 flex items-center justify-center rotate-45 shadow-xl">
+                            <div class="w-10 h-10 bg-white"></div>
+                        </div>
+                        <p class="text-[10px] opacity-40">SELO DE EXCELÊNCIA</p>
+                    </div>
+                    <div class="text-right">
+                        <p id="cert-issue-date" class="border-b-2 border-black pb-2 mb-2">-- / -- / ----</p>
+                        <p class="opacity-50 uppercase tracking-widest">Data de Emissão</p>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-16 flex gap-8 no-print">
+                <button onclick="window.print()" class="btn-cyan px-16 py-6 text-sm shadow-2xl">Gerar PDF Oficial</button>
+                <button onclick="returnToDashboard()" class="px-10 py-6 text-xs font-black opacity-30 uppercase tracking-widest hover:opacity-100 transition">Voltar ao Painel</button>
+            </div>
+        </section>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ELITE TOOLS REGISTRY
+        const ELITE_TOOLS = [
+            { name: "Nmap Scripting Engine", cat: "NETWORK_AUDIT", desc: "Avançamos além do básico. O NSE permite automatizar tarefas de auditoria de rede utilizando scripts Lua potentes para descoberta de vulnerabilidades.", commands: ["nmap --script vulners -sV <target>", "nmap --script-help default"] },
+            { name: "Metasploit Pro-Ops", cat: "EXPLOITATION", desc: "Framework industrial para testes de penetração. Focamos na pós-exploração, escalada de privilégios e persistência silenciosa.", commands: ["msfconsole -q", "sessions -l", "use post/multi/manage/shell_to_meterpreter"] },
+            { name: "Burp Suite Advanced", cat: "WEB_LAYER", desc: "Manipulação de cabeçalhos e injeções em nível de protocolo. O foco sênior é a lógica de negócio e falhas de autorizaç
