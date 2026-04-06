@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber Nexus | Omni-Sentinel Senior Academy</title>
+    <title>Cyber Nexus | Elite Senior Academy</title>
     
-    <!-- Bibliotecas Externas via CDN (Estáveis) -->
+    <!-- Scripts Externos Diretos (Sem erro de compilação) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -34,24 +33,24 @@
 
         body::-webkit-scrollbar { display: none; }
 
+        /* Fundo Imersivo 3D */
         #canvas-container {
             position: fixed;
             inset: 0;
             z-index: 0;
             pointer-events: none;
-            opacity: 0.7;
+            opacity: 0.5;
         }
 
-        .glass {
+        /* UI premium e Arredondada */
+        .glass-card {
             background: var(--glass);
-            backdrop-filter: blur(40px);
+            backdrop-filter: blur(50px);
             border: 1px solid var(--glass-border);
+            border-radius: 4rem;
         }
 
-        .rounded-premium { border-radius: 4rem; }
-
-        /* Módulos (Grid de 600) */
-        .node-box {
+        .node-button {
             aspect-ratio: 1;
             border-radius: 1.5rem;
             display: flex;
@@ -59,34 +58,24 @@
             justify-content: center;
             font-size: 11px;
             font-weight: 800;
-            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid rgba(255, 255, 255, 0.05);
             cursor: pointer;
-            position: relative;
         }
 
-        .node-box:hover:not(.locked) {
-            transform: scale(1.18) translateY(-10px);
+        .node-button:hover:not(.locked) {
+            transform: scale(1.15) translateY(-8px);
             background: var(--accent);
             color: #000;
-            box-shadow: 0 25px 50px var(--accent-glow);
+            box-shadow: 0 20px 40px var(--accent-glow);
             z-index: 10;
         }
 
-        .node-box.completed {
-            background: var(--accent);
-            color: #000;
-            border-color: var(--accent);
-        }
+        .node-button.completed { background: var(--accent); color: #000; border-color: var(--accent); }
+        .node-button.locked { opacity: 0.1; cursor: not-allowed; filter: grayscale(1); }
 
-        .node-box.locked {
-            opacity: 0.1;
-            cursor: not-allowed;
-            filter: grayscale(1);
-        }
-
-        .btn-action {
+        .btn-nexus {
             background: linear-gradient(135deg, var(--accent), #0072ff);
             color: #000;
             font-weight: 800;
@@ -94,192 +83,194 @@
             transition: all 0.4s;
             text-transform: uppercase;
             letter-spacing: 2px;
+            padding: 1.5rem 3rem;
         }
 
-        .btn-action:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px var(--accent-glow);
+        .btn-nexus:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 40px var(--accent-glow);
         }
 
-        .view-pane {
-            display: none;
-            width: 100%;
-            min-height: 100vh;
-            flex-direction: column;
+        .view-layer { 
+            display: none; 
+            width: 100%; 
+            min-height: 100vh; 
+            flex-direction: column; 
+            position: relative;
+            z-index: 10;
         }
+        
+        .view-layer.active { display: flex !important; }
 
-        .view-visible { display: flex !important; }
-
-        .custom-scroll::-webkit-scrollbar { width: 5px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 20px; }
-
-        .terminal-bg {
+        .terminal-box {
             background: rgba(0, 0, 0, 0.6);
             border-radius: 2.5rem;
             font-family: 'JetBrains Mono', monospace;
             border: 1px solid rgba(0, 210, 255, 0.15);
         }
 
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+
         @media print {
             .no-print { display: none !important; }
-            body { background: white !important; color: black !important; }
-            #cert-final { border: 20px double black !important; box-shadow: none !important; width: 100% !important; margin: 0 !important; }
+            body { background: white; }
+            #certificate-final { border: 20px double black !important; box-shadow: none !important; margin: 0 !important; width: 100% !important; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Ambiente 3D -->
     <div id="canvas-container"></div>
 
-    <div id="nexus-application" class="relative z-10 min-h-screen">
+    <!-- NÚCLEO DA APLICAÇÃO -->
+    <div id="app">
 
-        <!-- VIEW: LOGIN -->
-        <section id="pane-auth" class="view-pane view-visible items-center justify-center p-6">
-            <div class="glass p-16 md:p-28 rounded-premium max-w-3xl w-full text-center shadow-2xl border-white/5">
-                <div class="w-32 h-32 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-[3rem] mx-auto mb-12 flex items-center justify-center shadow-2xl rotate-6 transition-all hover:rotate-0 duration-500">
-                    <i data-lucide="shield-check" class="text-white w-16 h-16"></i>
+        <!-- 1. TELA DE LOGIN (ABRE POR PADRÃO) -->
+        <section id="view-login" class="view-layer active items-center justify-center p-6">
+            <div class="glass-card p-16 md:p-28 max-w-3xl w-full text-center shadow-2xl border-white/5">
+                <div class="w-32 h-32 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-[3rem] mx-auto mb-12 flex items-center justify-center shadow-2xl rotate-6">
+                    <!-- Shield Icon SVG -->
+                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
                 </div>
-                <h1 class="text-7xl font-extrabold tracking-tighter mb-4 italic">Cyber<span class="text-cyan-400">Nexus</span></h1>
-                <p class="text-[13px] opacity-40 uppercase tracking-[0.7em] font-bold mb-16">Senior Cybersecurity Academy</p>
+                <h1 class="text-7xl font-extrabold tracking-tighter italic mb-4">Cyber<span class="text-cyan-400">Nexus</span></h1>
+                <p class="text-[13px] opacity-40 uppercase tracking-[0.8em] font-bold mb-16">Sistema de Autenticação Sênior</p>
                 
                 <div class="space-y-8 max-w-md mx-auto">
-                    <input type="text" id="agent-name" placeholder="Identificação de Operador" class="w-full bg-white/5 border border-white/10 rounded-[2rem] px-10 py-7 focus:outline-none focus:border-cyan-400 transition-all text-center text-2xl font-bold tracking-tight">
-                    <button onclick="bootSystem()" class="w-full btn-action py-7">Estabelecer Conexão</button>
+                    <input type="text" id="input-agent-name" placeholder="Insira seu Codinome" class="w-full bg-white/5 border border-white/10 rounded-[2rem] px-10 py-7 focus:outline-none focus:border-cyan-400 transition-all text-center text-2xl font-bold tracking-tight">
+                    <button onclick="handleLogin()" class="w-full btn-nexus">Estabelecer Conexão</button>
                 </div>
             </div>
         </section>
 
-        <!-- VIEW: DASHBOARD -->
-        <section id="pane-dashboard" class="view-pane flex-col">
-            <nav class="px-14 py-12 flex justify-between items-center glass !rounded-none border-0 border-b border-white/5 sticky top-0 z-50">
+        <!-- 2. DASHBOARD (MATRIZ DE 600 NÓS) -->
+        <section id="view-dashboard" class="view-layer flex-col">
+            <nav class="px-14 py-12 flex justify-between items-center glass-card !rounded-none border-0 border-b sticky top-0 z-50">
                 <div class="flex items-center gap-8">
                     <span class="text-4xl font-black italic tracking-tighter">CN<span class="text-cyan-400">.</span></span>
                     <div class="h-12 w-px bg-white/10"></div>
                     <div class="flex flex-col">
-                        <span id="nav-agent" class="text-sm font-black tracking-widest uppercase text-white">OPERADOR</span>
-                        <span id="nav-info" class="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">PROGRESSO: 0 / 600</span>
+                        <span id="nav-codename" class="text-sm font-black tracking-widest uppercase">AGENTE</span>
+                        <span id="nav-prog-label" class="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">PROGRESSO: 0 / 600</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-12">
                     <div class="w-72 h-2.5 bg-white/5 rounded-full overflow-hidden">
                         <div id="prog-bar-fill" class="h-full bg-cyan-400 transition-all duration-1000" style="width: 0%"></div>
                     </div>
-                    <button id="btn-cert-nav" disabled onclick="switchView('pane-cert')" class="text-[11px] font-black border border-white/10 px-10 py-5 rounded-[1.5rem] hover:bg-white hover:text-black transition-all disabled:opacity-10 uppercase">Certificado</button>
-                    <button onclick="shutdown()" class="opacity-20 hover:opacity-100 transition"><i data-lucide="power" class="w-6 h-6"></i></button>
+                    <button id="nav-cert-btn" disabled onclick="navigate('view-cert')" class="text-[11px] font-black border border-white/10 px-10 py-4 rounded-2xl hover:bg-white hover:text-black transition-all disabled:opacity-20 uppercase">Certificado</button>
+                    <button onclick="resetApp()" class="opacity-20 hover:opacity-100 transition"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/></svg></button>
                 </div>
             </nav>
 
             <main class="flex-1 container mx-auto px-6 py-20">
-                <div class="glass p-16 md:p-24 rounded-premium shadow-2xl relative overflow-hidden">
-                    <div class="flex justify-between items-end mb-20">
-                        <div>
-                            <h2 class="text-4xl font-black uppercase tracking-tight italic mb-3">Matriz de Especialização</h2>
-                            <p class="text-sm opacity-40 uppercase tracking-widest font-bold">Navegue pelos 600 nós técnicos de defesa nuclear</p>
-                        </div>
-                        <div class="flex items-center gap-4 text-[11px] font-black opacity-20 tracking-widest uppercase">
-                            <i data-lucide="activity" class="text-cyan-400 animate-pulse"></i> Base de dados local ativa
-                        </div>
+                <div class="glass-card p-16 md:p-24 shadow-2xl relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-16">
+                        <h2 class="text-4xl font-black uppercase tracking-tight italic">Matriz de Redes</h2>
+                        <span class="text-[10px] font-mono opacity-20 uppercase tracking-widest">Sessão Local Criptografada</span>
                     </div>
-                    <div id="modules-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-15 gap-5 overflow-y-auto max-h-[700px] pr-6 custom-scroll">
-                        <!-- Gerado via Script -->
+                    <div id="grid-nodes" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-15 gap-5 overflow-y-auto max-h-[650px] pr-6 custom-scroll">
+                        <!-- Gerado via JS -->
                     </div>
                 </div>
             </main>
         </section>
 
-        <!-- VIEW: MODULE -->
-        <section id="pane-module" class="view-pane flex-col">
-            <nav class="px-14 py-12 flex justify-between items-center glass !rounded-none border-0 border-b border-white/5 sticky top-0 z-50">
-                <button onclick="switchView('pane-dashboard')" class="flex items-center gap-5 hover:text-cyan-400 transition text-sm font-bold uppercase tracking-widest">
-                    <i data-lucide="chevron-left" class="w-6 h-6"></i> Mapa Global
+        <!-- 3. AULA / ESTAÇÃO DE TRABALHO -->
+        <section id="view-module" class="view-layer flex-col">
+            <nav class="px-14 py-12 flex justify-between items-center glass-card !rounded-none border-0 border-b sticky top-0 z-50">
+                <button onclick="navigate('view-dashboard')" class="flex items-center gap-4 hover:text-cyan-400 transition text-sm font-black uppercase tracking-widest group">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    Mapa Global
                 </button>
                 <div class="text-center">
-                    <p id="module-category" class="text-[10px] font-black text-cyan-400 uppercase tracking-[0.4em] mb-1">AUDITORIA</p>
-                    <h3 id="module-id-label" class="text-lg font-black uppercase tracking-tighter">NÓ OPERACIONAL #001</h3>
+                    <p id="mod-detail-cat" class="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-1">CATEGORIA</p>
+                    <h3 id="mod-detail-id" class="text-lg font-black uppercase tracking-tighter">NÓ OPERACIONAL #001</h3>
                 </div>
                 <div class="w-48"></div>
             </nav>
 
             <main class="flex-1 container mx-auto px-6 py-20 flex flex-col xl:flex-row gap-16">
                 <div class="flex-1">
-                    <div class="glass p-16 md:p-24 shadow-2xl relative overflow-hidden !rounded-[4rem]">
-                        <h2 class="text-6xl font-extrabold tracking-tighter mb-12 italic" id="lesson-header">Mastering Advanced Tools</h2>
-                        <div id="lesson-body" class="prose prose-invert max-w-none text-xl leading-relaxed opacity-70 mb-20 font-light">
+                    <div class="glass-card p-16 md:p-24 shadow-2xl relative overflow-hidden !rounded-[4rem]">
+                        <h2 class="text-6xl font-extrabold tracking-tighter mb-12 italic" id="lesson-h2">Tool Training</h2>
+                        <div id="lesson-content" class="prose prose-invert max-w-none text-xl leading-relaxed opacity-70 mb-20 font-light">
                             <!-- Injected -->
                         </div>
                         
-                        <div class="terminal-bg p-12 mt-16">
-                            <h4 class="text-[12px] font-black text-cyan-400 uppercase tracking-[0.3em] mb-10">Protocolo de Terminal</h4>
-                            <div id="commands-container" class="space-y-6">
-                                <!-- Command list -->
+                        <div class="terminal-box p-12 mt-16">
+                            <h4 class="text-[12px] font-black text-cyan-400 uppercase tracking-[0.3em] mb-10">Consola de Comandos</h4>
+                            <div id="tool-commands" class="space-y-6 opacity-90 text-sm">
+                                <!-- Commands -->
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="w-full xl:w-[450px] space-y-10">
-                    <div class="glass p-12 rounded-[3.5rem] shadow-xl">
-                        <h3 class="text-xs font-black uppercase mb-10 opacity-40 tracking-widest">Ficheiros do Nó</h3>
-                        <button onclick="downloadLessonPDF()" class="w-full bg-white/5 border border-white/10 p-8 rounded-[2rem] text-left hover:border-cyan-400/50 transition-all mb-8 flex flex-col gap-3 group">
-                            <span class="text-sm font-black text-cyan-400 uppercase tracking-widest">RECURSO_OFFLINE.PDF</span>
-                            <span class="text-[11px] opacity-40 leading-relaxed">3 Páginas: Arquitetura, Comandos e Laboratório Técnico.</span>
+                    <div class="glass-card p-12 rounded-[3.5rem] shadow-xl">
+                        <h3 class="text-xs font-black uppercase mb-10 opacity-40 tracking-widest border-b border-white/5 pb-6">Protocolos</h3>
+                        <button onclick="generatePDF()" class="w-full bg-white/5 border border-white/10 p-8 rounded-[2rem] text-left hover:border-cyan-400/50 transition-all mb-8 flex flex-col gap-3">
+                            <span class="text-sm font-black text-cyan-400 uppercase tracking-widest">DATA_STUDY_PACK.PDF</span>
+                            <span class="text-[11px] opacity-40 font-medium">Compêndio sênior de 3 páginas: Teoria, Comandos e Laboratório.</span>
                         </button>
-                        <button onclick="switchView('pane-exam')" class="w-full btn-action py-8 shadow-2xl text-sm">Validar Conhecimento</button>
+                        <button onclick="navigate('view-exam')" class="w-full btn-nexus py-8 shadow-2xl text-sm">Realizar Validação</button>
                     </div>
 
-                    <div class="glass p-12 rounded-[3.5rem] h-[450px] flex flex-col shadow-xl">
-                        <h3 class="text-[12px] font-black uppercase mb-8 opacity-40 tracking-widest flex items-center justify-between">Oracle AI <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span></h3>
-                        <div id="chat-box" class="flex-1 overflow-y-auto text-[12px] space-y-6 opacity-70 font-medium mb-10 custom-scroll pr-4">
-                            <div class="bg-white/5 p-6 rounded-[2rem]">Link seguro estabelecido. Operador, solicita apoio técnico sobre este nó.</div>
+                    <div class="glass-card p-12 rounded-[3.5rem] h-[450px] flex flex-col">
+                        <h3 class="text-[12px] font-black uppercase mb-8 opacity-40 tracking-widest flex items-center justify-between">Oracle AI <span class="w-2 h-2 rounded-full bg-cyan-400"></span></h3>
+                        <div id="chat-logs" class="flex-1 overflow-y-auto text-[11px] space-y-6 opacity-70 font-medium mb-10 custom-scroll pr-3">
+                            <div class="bg-white/5 p-6 rounded-[2rem]">Conexão estabelecida. Qual é a sua dúvida técnica sobre este nó?</div>
                         </div>
-                        <div class="flex gap-4 bg-black/40 p-3 rounded-[2rem] border border-white/10">
-                            <input type="text" id="ai-query" placeholder="Dúvida técnica..." class="flex-1 bg-transparent text-xs px-6 focus:outline-none">
-                            <button onclick="askOracle()" class="bg-cyan-500 text-black w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-110"><i data-lucide="zap" class="w-6 h-6"></i></button>
+                        <div class="flex gap-4 bg-black/40 p-2 rounded-2xl border border-white/10">
+                            <input type="text" id="ai-input" placeholder="Solicitar telemetria..." class="flex-1 bg-transparent text-xs px-6 focus:outline-none">
+                            <button onclick="askOracle()" class="bg-cyan-500 text-black w-14 h-14 rounded-2xl flex items-center justify-center hover:scale-110 transition shadow-lg">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                            </button>
                         </div>
                     </div>
                 </div>
             </main>
         </section>
 
-        <!-- VIEW: EXAM -->
-        <section id="pane-exam" class="view-pane items-center justify-center p-6 fade-in">
-            <div class="glass p-20 md:p-32 rounded-premium max-w-4xl w-full shadow-2xl">
-                <h2 class="text-5xl font-black mb-16 flex items-center gap-8 italic tracking-tighter">Validação de Nó #<span id="exam-id-label">0</span></h2>
+        <!-- 4. EXAME -->
+        <section id="view-exam" class="view-layer items-center justify-center p-6">
+            <div class="glass-card p-20 md:p-32 rounded-elite max-w-4xl w-full shadow-2xl">
+                <h2 class="text-5xl font-black mb-16 italic tracking-tighter">Validação de Nó #<span id="exam-id-tag">0</span></h2>
                 <div class="space-y-12">
-                    <p class="text-3xl font-bold opacity-80 leading-snug tracking-tight">Qual é a função estratégica principal desta ferramenta em infraestruturas críticas?</p>
+                    <p class="text-3xl font-bold opacity-80 leading-snug tracking-tight">Qual é o objectivo primordial desta ferramenta em operações de nível Especialista Sênior?</p>
                     <div class="grid grid-cols-1 gap-8">
-                        <button onclick="finishModuleValidation()" class="p-10 rounded-[3rem] border border-white/10 hover:border-cyan-400 hover:bg-cyan-400/10 transition-all font-black text-left text-xl flex justify-between items-center group">
-                            A) Auditoria de conformidade, mitigação de ameaças 0-day e resiliência de rede.
-                            <i data-lucide="check-circle" class="opacity-0 group-hover:opacity-100 text-cyan-400 w-8 h-8"></i>
+                        <button onclick="finishActiveModule()" class="p-10 rounded-[3rem] border border-white/10 hover:border-cyan-400 hover:bg-cyan-400/10 transition-all font-black text-left text-xl">
+                            A) Auditoria de conformidade, mitigação de ameaças zero-day e resiliência de perímetro.
                         </button>
-                        <button onclick="alert('Falha na validação técnica do nó.')" class="p-10 rounded-[3rem] border border-white/10 hover:border-red-400 transition-all font-black text-left text-xl">B) Automatização de e-mails corporativos e gestão de calendários.</button>
+                        <button onclick="alert('Falha na integridade: Resposta incorrecta.')" class="p-10 rounded-[3rem] border border-white/10 hover:border-red-400 transition-all font-black text-left text-xl">B) Automatização de tarefas básicas e suporte administrativo digital.</button>
                     </div>
                 </div>
                 <div class="mt-16 flex gap-8">
-                    <button onclick="switchView('pane-module')" class="text-xs font-black uppercase opacity-30 hover:opacity-100 transition tracking-widest underline">Revisar Material</button>
+                    <button onclick="navigate('view-module')" class="text-xs font-black uppercase opacity-30 hover:opacity-100 transition tracking-widest underline">Revisar Material</button>
                 </div>
             </div>
         </section>
 
-        <!-- VIEW: CERTIFICADO -->
-        <section id="pane-cert" class="view-pane items-center justify-center p-6">
-            <div id="cert-final" class="bg-white text-black p-24 md:p-40 rounded shadow-2xl border-[30px] border-double border-blue-900 w-full max-w-6xl relative text-center">
-                <div class="absolute top-10 right-10 w-64 h-64 bg-blue-50 rounded-full blur-[100px] opacity-40"></div>
+        <!-- 5. CERTIFICADO -->
+        <section id="view-cert" class="view-layer items-center justify-center p-6">
+            <div id="certificate-final" class="bg-white text-black p-24 md:p-40 rounded shadow-2xl border-[30px] border-double border-blue-900 w-full max-w-6xl relative text-center">
                 <h4 class="text-blue-900 font-bold uppercase tracking-[2.2em] text-[11px] mb-28 opacity-60">Cyber Nexus Academy</h4>
-                <p class="italic text-3xl mb-12 font-serif opacity-70">Confirmamos com distinção de mérito sênior que</p>
-                <h1 id="cert-user" class="text-6xl md:text-9xl font-black border-b-8 border-black inline-block px-20 pb-8 mb-24 uppercase tracking-tighter italic">NOME</h1>
+                <p class="italic text-3xl mb-12 font-serif opacity-70">Certificamos com distinção absoluta que</p>
+                <h1 id="cert-user-name" class="text-6xl md:text-9xl font-black border-b-8 border-black inline-block px-20 pb-8 mb-24 uppercase tracking-tighter italic">NOME</h1>
                 <p class="text-3xl max-w-5xl mx-auto leading-relaxed mb-28 opacity-90 font-light">
-                    concluiu com êxito a trilha sênior de especialização <strong>Omni-Sentinel</strong>, dominando 600 módulos de Hacking Ético, Auditoria Nuclear e Governança Digital.
+                    concluiu com êxito a trilha sênior de especialização <strong>Omni-Sentinel</strong>, totalizando 600 módulos de Hacking Ético, Auditoria Nuclear e Governança de Elite.
                 </p>
                 <div class="flex justify-between items-end mt-24 px-20 text-[14px] font-black">
-                    <div class="text-left"><p class="border-b-4 border-black pb-3 mb-3">ID_AUTH: NX-SENIOR-LOCAL-00</p><p class="opacity-40 uppercase tracking-widest">Validação Central</p></div>
-                    <div class="text-right"><p id="cert-date-val" class="border-b-4 border-black pb-3 mb-3">2026</p><p class="opacity-40 uppercase tracking-widest">Data de Emissão</p></div>
+                    <div class="text-left"><p class="border-b-4 border-black pb-3 mb-3">ID_AUTH: NX-SENIOR-CERT-990</p><p class="opacity-50 uppercase tracking-widest">Validação Central</p></div>
+                    <div class="text-right"><p id="cert-date-label" class="border-b-4 border-black pb-3 mb-3">2026</p><p class="opacity-50 uppercase tracking-widest">Data de Emissão</p></div>
                 </div>
             </div>
             <div class="mt-20 flex gap-10 no-print">
-                <button onclick="window.print()" class="btn-action px-24 py-8 rounded-full text-sm tracking-widest shadow-xl">Imprimir Diploma</button>
-                <button onclick="switchView('pane-dashboard')" class="px-14 py-8 rounded-full text-xs font-black opacity-30 uppercase tracking-widest border border-white/10">Voltar</button>
+                <button onclick="window.print()" class="btn-nexus px-24 py-8 text-sm">Imprimir Diploma Sênior</button>
+                <button onclick="navigate('view-dashboard')" class="px-14 py-8 rounded-full border border-white/10 text-xs font-black opacity-30 uppercase tracking-widest">Voltar</button>
             </div>
         </section>
 
@@ -287,65 +278,76 @@
 
     <script>
         // --- BASE DE DADOS LOCAL ---
-        let storage = JSON.parse(localStorage.getItem('nexus_student')) || {
+        let nexusState = JSON.parse(localStorage.getItem('nexus_db')) || {
             agent: "",
             completed: []
         };
 
-        const TOOLS_DB = [
-            { name: "Nmap Advanced", cat: "AUDITORIA_REDE", desc: "Varredura furtiva e scripts NSE para descoberta de falhas críticas em nível de protocolo.", commands: ["nmap -sS -A -T4 target", "nmap --script vulners target", "nmap -p- -v target"] },
-            { name: "Metasploit Ops", cat: "EXPLORAÇÃO", desc: "Framework industrial para orquestração de intrusões simuladas e escalada de privilégios em infraestruturas.", commands: ["msfconsole -q", "use exploit/multi/handler", "sessions -l"] },
-            { name: "Burp Mastery", cat: "WEB_SECURITY", desc: "Intercepção de tráfego HTTP/S e manipulação de payloads para auditoria de aplicações web e lógica de negócio.", commands: ["Proxy Intercept On", "Repeater Payload Analysis", "Intruder Attack"] },
-            { name: "Wireshark Intel", cat: "TRAFFIC_INTEL", desc: "Inspecção profunda de pacotes e análise heurística para detecção de exfiltração de dados silenciosa.", commands: ["ip.addr == X.X.X.X", "tcp.port == 443", "tls.handshake.type == 1"] },
-            { name: "Hashcat Elite", cat: "CRIPTOGRAFIA", desc: "Motor de alta performance para auditoria de credenciais e quebra de algoritmos de hashing modernos.", commands: ["hashcat -m 1000 hash.txt -a 3", "hashcat -b", "hashcat -m 1800 shadow.txt"] }
+        const TOOLS = [
+            { name: "Nmap Advanced", cat: "AUDITORIA_REDE", desc: "Varredura furtiva e scripts NSE para descoberta de falhas críticas em nível de protocolo.", commands: ["nmap -sS -A -T4 target", "nmap --script vulners target"] },
+            { name: "Metasploit Pro", cat: "EXPLORAÇÃO", desc: "Framework industrial para orquestração de intrusões simuladas e escalada de privilégios.", commands: ["msfconsole -q", "use exploit/multi/handler"] },
+            { name: "Burp Mastery", cat: "WEB_SECURITY", desc: "Intercepção de tráfego HTTP/S e manipulação de payloads para auditoria de aplicações web.", commands: ["Proxy Intercept On", "Repeater Payload Analysis"] },
+            { name: "Wireshark Intel", cat: "TRAFFIC_INTEL", desc: "Inspecção profunda de pacotes para detecção de exfiltração de dados e intrusões silenciosas.", commands: ["ip.addr == X.X.X.X", "tcp.port == 443"] },
+            { name: "Hashcat Elite", cat: "CRIPTOGRAFIA", desc: "Motor de alta performance para auditoria de credenciais e quebra de algoritmos de hashing modernos.", commands: ["hashcat -m 1000 h.txt -a 3", "hashcat -b"] }
         ];
 
-        // --- ENGINE 3D (THREE.JS) ---
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        // --- THREE.JS BACKGROUND ---
+        let scene, camera, renderer, nexusModel;
 
-        let nexusModel;
-        function update3D(id) {
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            const light = new THREE.PointLight(0x00d2ff, 2.5, 100);
+            light.position.set(30, 30, 30);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0x111111));
+            camera.position.z = 60;
+
+            update3DArtifact(0);
+            animate();
+        }
+
+        function update3DArtifact(id) {
             if (nexusModel) scene.remove(nexusModel);
             const group = new THREE.Group();
             const seed = id || 0;
-            const type = seed % 3;
-            
-            let geo;
-            if(type === 0) geo = new THREE.IcosahedronGeometry(18, 1);
-            else if(type === 1) geo = new THREE.TorusKnotGeometry(12, 3, 128, 32);
-            else geo = new THREE.OctahedronGeometry(16, 2);
-
+            const geo = (seed % 3 === 0) ? new THREE.IcosahedronGeometry(18, 1) : (seed % 3 === 1) ? new THREE.TorusKnotGeometry(12, 3, 128, 32) : new THREE.OctahedronGeometry(17, 2);
             const mat = new THREE.MeshPhongMaterial({ 
                 color: new THREE.Color(`hsl(${(seed * 137.5) % 360}, 80%, 60%)`),
                 wireframe: true, transparent: true, opacity: 0.15 
             });
-
             group.add(new THREE.Mesh(geo, mat));
             nexusModel = group;
             scene.add(nexusModel);
         }
-
-        const l1 = new THREE.PointLight(0x00d2ff, 2.5, 100);
-        l1.position.set(30, 30, 30);
-        scene.add(l1);
-        scene.add(new THREE.AmbientLight(0x111111));
-        camera.position.z = 60;
 
         function animate() {
             requestAnimationFrame(animate);
             if(nexusModel) { nexusModel.rotation.y += 0.002; nexusModel.rotation.x += 0.001; }
             renderer.render(scene, camera);
         }
-        animate();
 
-        // --- LÓGICA DE INTERAÇÃO ---
+        // --- LÓGICA DE NAVEGAÇÃO ---
         let activeId = null;
         const apiKey = ""; // Gemini API
 
-        window.switchView = (viewId) => {
-            document.querySelectorAll('.view-pane').forEach(v => v.classList.remove('view-visible'));
-            document.getElementById(viewId).classList.add('vi
+        window.navigate = (viewId) => {
+            document.querySelectorAll('.view-layer').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            window.scrollTo(0,0);
+        };
+
+        window.handleLogin = () => {
+            const name = document.getElementById('input-agent-name').value.trim();
+            if(!name) return alert("Identificação Necessária.");
+            nexusState.agent = name.toUpperCase();
+            save();
+            renderDashboard();
+            navigate('view-dashboard');
+        };
+
+        function renderDashboa
