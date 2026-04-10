@@ -1,169 +1,870 @@
 <!DOCTYPE html>
-<html lang="pt-pt">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber Nexus | Elite Academy</title>
+    <title>Cyber Nexus | Elite Cybersecurity Academy</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200;0,400;0,600;0,800;1,800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;800&family=JetBrains+Mono&display=swap');
-        body { background: #01040a; color: #f0f6fc; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; overflow: hidden; }
-        #canvas-container { position: fixed; inset: 0; z-index: 0; opacity: 0.6; }
-        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(40px); border: 1px solid rgba(255,255,255,0.08); border-radius: 3rem; }
-        .view { position: absolute; inset: 0; display: none; flex-direction: column; z-index: 10; padding: 2rem; overflow-y: auto; }
-        .active { display: flex !important; }
-        .node { aspect-ratio: 1; border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; transition: 0.3s; }
-        .node:hover:not(.locked) { transform: scale(1.1); background: #00d2ff; color: #000; box-shadow: 0 0 30px rgba(0,210,255,0.4); }
-        .completed { background: #00d2ff; color: #000; }
-        .locked { opacity: 0.1; cursor: not-allowed; }
-        .btn-blue { background: linear-gradient(135deg, #00d2ff, #0072ff); color: #000; font-weight: 800; border-radius: 1.5rem; transition: 0.3s; text-transform: uppercase; padding: 1.25rem 2.5rem; }
-        .btn-blue:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,210,255,0.4); }
-        .terminal { background: rgba(0,0,0,0.5); border-radius: 2rem; font-family: 'JetBrains Mono'; border: 1px solid rgba(0,210,255,0.1); padding: 1.5rem; }
-        @media print { .no-print { display: none !important; } body { background: white; color: black; } #cert { border: 15px double black !important; margin: 0 !important; } }
+        :root {
+            --accent: #00d2ff;
+            --accent-glow: rgba(0, 210, 255, 0.35);
+            --bg: #01040a;
+            --glass: rgba(255,255,255,0.03);
+            --glass-border: rgba(255,255,255,0.07);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg);
+            color: #f0f6fc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        #canvas-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.55;
+        }
+
+        /* ── UTILITÁRIOS ── */
+        .glass {
+            background: var(--glass);
+            backdrop-filter: blur(48px);
+            -webkit-backdrop-filter: blur(48px);
+            border: 1px solid var(--glass-border);
+        }
+
+        .rnd  { border-radius: 3rem; }
+        .rnd2 { border-radius: 2rem; }
+        .rnd3 { border-radius: 1.5rem; }
+
+        .btn-cyan {
+            background: linear-gradient(135deg, #00d2ff, #0072ff);
+            color: #000;
+            font-weight: 800;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            transition: transform .3s, box-shadow .3s;
+        }
+        .btn-cyan:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 18px 45px var(--accent-glow);
+        }
+        .btn-cyan:active { transform: translateY(0); }
+
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,.1);
+            color: rgba(255,255,255,.45);
+            font-weight: 800;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all .25s;
+        }
+        .btn-ghost:hover { border-color: var(--accent); color: #fff; }
+
+        /* ── SCROLLBAR ── */
+        .slim-scroll::-webkit-scrollbar { width: 4px; }
+        .slim-scroll::-webkit-scrollbar-track { background: transparent; }
+        .slim-scroll::-webkit-scrollbar-thumb { background: rgba(0,210,255,.2); border-radius: 99px; }
+
+        /* ── VIEWS ── */
+        .view { display: none; flex-direction: column; min-height: 100vh; position: relative; z-index: 10; }
+        .view.active { display: flex; }
+        .view-center { align-items: center; justify-content: center; }
+
+        /* ── ANIMAÇÕES ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(28px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeUp .75s cubic-bezier(.16,1,.3,1) forwards; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { animation: spin 1s linear infinite; }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0px var(--accent-glow); }
+            50%       { box-shadow: 0 0 22px var(--accent-glow); }
+        }
+
+        /* ── NODE GRID ── */
+        .node-btn {
+            aspect-ratio: 1;
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 800;
+            cursor: pointer;
+            border: 1px solid rgba(255,255,255,.06);
+            background: rgba(255,255,255,.025);
+            transition: transform .35s cubic-bezier(.16,1,.3,1), background .25s, box-shadow .25s, border-color .25s;
+            position: relative;
+        }
+        .node-btn:hover:not(.locked) {
+            transform: scale(1.18) translateY(-4px);
+            background: var(--accent);
+            color: #000;
+            border-color: transparent;
+            box-shadow: 0 12px 30px var(--accent-glow);
+        }
+        .node-btn.done {
+            background: var(--accent);
+            color: #000;
+            border-color: transparent;
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+        .node-btn.locked {
+            opacity: .08;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        /* ── TERMINAL ── */
+        .terminal {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0,0,0,.45);
+            border: 1px solid rgba(0,210,255,.08);
+            border-radius: 2rem;
+            padding: 2rem 2.5rem;
+        }
+        .cmd-line {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.05);
+            border-radius: .75rem;
+            padding: .9rem 1.2rem;
+            font-size: .8rem;
+            color: var(--accent);
+            margin-bottom: .75rem;
+            transition: border-color .2s;
+        }
+        .cmd-line:hover { border-color: rgba(0,210,255,.3); }
+
+        /* ── CHAT ── */
+        .chat-msg { font-size: .72rem; line-height: 1.6; padding: .5rem .8rem; border-radius: .75rem; max-width: 88%; word-break: break-word; }
+        .chat-user { background: rgba(0,210,255,.12); color: var(--accent); align-self: flex-end; }
+        .chat-ai   { background: rgba(255,255,255,.06); color: rgba(255,255,255,.75); align-self: flex-start; }
+
+        /* ── CERTIFICADO ── */
+        #cert-area {
+            background: #fff;
+            color: #000;
+            border: 22px double #1e3a8a;
+            border-radius: .5rem;
+            text-align: center;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            body, #canvas-bg { background: white !important; }
+            #cert-area { border: 20px double #1e3a8a !important; }
+        }
+
+        /* ── PROGRESS BAR ── */
+        #nav-prog-bar {
+            height: 100%;
+            background: var(--accent);
+            box-shadow: 0 0 12px var(--accent-glow);
+            border-radius: 99px;
+            transition: width 1s cubic-bezier(.16,1,.3,1);
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            .hide-mobile { display: none !important; }
+            .nav-pad { padding: 1.5rem 1.25rem !important; }
+            .main-pad { padding: 1.25rem !important; }
+        }
     </style>
 </head>
 <body>
-    <div id="canvas-container"></div>
 
-    <!-- LOGIN -->
-    <section id="v-auth" class="view active items-center justify-center">
-        <div class="glass p-12 text-center max-w-xl w-full shadow-2xl">
-            <div class="w-20 h-20 bg-cyan-500/20 rounded-3xl mx-auto mb-8 flex items-center justify-center rotate-6"><i data-lucide="shield" class="text-cyan-400 w-10 h-10"></i></div>
-            <h1 class="text-5xl font-black italic mb-2">Cyber<span class="text-cyan-400">Nexus</span></h1>
-            <p class="text-[10px] opacity-40 uppercase tracking-[0.5em] mb-10">Senior Sentinel Training</p>
-            <input type="text" id="agent-in" placeholder="Codinome" class="w-full bg-white/5 border border-white/10 rounded-2xl p-5 mb-6 text-center text-xl font-bold focus:border-cyan-400 outline-none">
-            <button onclick="doLogin()" class="w-full btn-blue">Aceder ao Núcleo</button>
+<!-- FUNDO 3D -->
+<canvas id="canvas-bg"></canvas>
+
+<!-- ════════════════════════════════════
+     VIEW: LOADING
+════════════════════════════════════ -->
+<div id="view-loading" class="view active view-center fixed inset-0 z-[200] bg-[#01040a]">
+    <div class="text-center">
+        <div class="w-14 h-14 border-[3px] border-cyan-400 border-t-transparent rounded-full spinner mx-auto mb-6"></div>
+        <p class="text-[10px] font-black tracking-[.55em] text-cyan-400">SINCRONIZANDO NÚCLEO...</p>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════
+     VIEW: LOGIN
+════════════════════════════════════ -->
+<div id="view-login" class="view view-center p-6">
+    <div class="glass rnd p-14 md:p-20 max-w-lg w-full text-center shadow-2xl fade-up">
+        <div class="w-24 h-24 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-[2.5rem] mx-auto mb-10 flex items-center justify-center shadow-2xl" style="transform:rotate(5deg)">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M12 2L3 7v9c0 5 9 8 9 8s9-3 9-8V7l-9-5z"/>
+                <path d="M12 22V12M15 15l-3-3-3 3"/>
+            </svg>
         </div>
-    </section>
+        <h1 class="text-6xl font-extrabold italic tracking-tighter mb-3">Cyber<span class="text-cyan-400">Nexus</span></h1>
+        <p class="text-[10px] font-black uppercase tracking-[.55em] opacity-35 mb-14">Omni-Sentinel Senior Academy</p>
 
-    <!-- DASHBOARD -->
-    <section id="v-dash" class="view flex-col">
-        <nav class="flex justify-between items-center mb-8 glass !rounded-none p-6 border-x-0 border-t-0">
-            <div class="flex items-center gap-4"><span class="text-2xl font-black">CN.</span><span id="n-name" class="text-xs font-bold uppercase opacity-60"></span></div>
-            <div class="flex items-center gap-6">
-                <div class="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden"><div id="n-bar" class="h-full bg-cyan-400 transition-all duration-1000" style="width:0%"></div></div>
-                <button id="n-cert" disabled onclick="go('v-cert')" class="text-[10px] font-black border border-white/10 px-6 py-2 rounded-xl disabled:opacity-20 uppercase">Certificado</button>
-                <button onclick="location.reload()" class="opacity-20 hover:opacity-100"><i data-lucide="log-out" class="w-5 h-5"></i></button>
-            </div>
-        </nav>
-        <div class="glass p-10 flex-1 overflow-hidden flex flex-col">
-            <h2 class="text-xl font-black mb-8 opacity-40 uppercase italic">Matriz de Conhecimento</h2>
-            <div id="grid" class="grid grid-cols-6 sm:grid-cols-10 lg:grid-cols-15 gap-3 overflow-y-auto pr-2"></div>
+        <div class="space-y-5 max-w-xs mx-auto">
+            <input
+                id="input-name"
+                type="text"
+                placeholder="Identificação do Operador"
+                autocomplete="off"
+                class="w-full bg-white/5 border border-white/10 rounded-2xl px-7 py-5 focus:outline-none focus:border-cyan-400 transition-all text-center text-lg font-bold tracking-wide"
+            />
+            <button onclick="handleLogin()" class="btn-cyan w-full py-5 rnd3 text-sm">Estabelecer Ligação</button>
         </div>
-    </section>
+        <p class="mt-14 text-[8px] font-black uppercase tracking-[.35em] opacity-20">Protocolo AES-X-SENIOR activo</p>
+    </div>
+</div>
 
-    <!-- MODULE -->
-    <section id="v-mod" class="view flex-col">
-        <div class="flex justify-between mb-6"><button onclick="go('v-dash')" class="text-xs font-bold uppercase flex items-center gap-2 opacity-50 hover:opacity-100 transition"><i data-lucide="chevron-left"></i> Mapa</button> <div class="text-center"><p id="m-cat" class="text-[9px] text-cyan-400 font-bold uppercase"></p><h3 id="m-id" class="text-sm font-black"></h3></div> <div class="w-10"></div></div>
-        <div class="flex flex-col lg:flex-row gap-8 flex-1">
-            <div class="flex-1 glass p-10 overflow-y-auto">
-                <h2 id="m-title" class="text-4xl font-black mb-6 italic"></h2>
-                <div id="m-body" class="text-lg opacity-60 leading-relaxed mb-8"></div>
-                <div class="terminal"><h4 class="text-[10px] text-cyan-400 font-bold mb-4 uppercase tracking-widest">Protocolos de Comando</h4><div id="m-cmds" class="space-y-3 font-mono text-sm"></div></div>
+<!-- ════════════════════════════════════
+     VIEW: DASHBOARD
+════════════════════════════════════ -->
+<div id="view-dashboard" class="view">
+
+    <!-- NAV -->
+    <nav id="dash-nav" class="glass border-0 border-b border-white/5 sticky top-0 z-50 px-10 py-6 nav-pad flex justify-between items-center">
+        <div class="flex items-center gap-5">
+            <span class="text-2xl font-black italic">CN<span class="text-cyan-400">.</span></span>
+            <div class="h-8 w-px bg-white/10 hide-mobile"></div>
+            <div class="hide-mobile">
+                <p id="nav-user" class="text-xs font-black tracking-widest uppercase">AGENTE</p>
+                <p id="nav-nodes" class="text-[9px] font-bold text-cyan-400 tracking-widest">NÓS: 0 / 600</p>
             </div>
-            <div class="w-full lg:w-80 space-y-6">
-                <div class="glass p-8">
-                    <button onclick="makePDF()" class="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-left mb-4 hover:border-cyan-400 transition">
-                        <p class="text-[10px] font-bold text-cyan-400">PDF_ESTUDO.PDF</p><p class="text-[8px] opacity-40">Teoria + Labs</p>
+        </div>
+        <div class="flex items-center gap-8">
+            <div class="w-52 h-1.5 bg-white/5 rounded-full overflow-hidden hide-mobile">
+                <div id="nav-prog-bar" style="width:0%"></div>
+            </div>
+            <button id="btn-cert" onclick="showView('cert')" disabled
+                class="btn-ghost text-[9px] px-7 py-3 rnd3 disabled:opacity-20 disabled:cursor-not-allowed">
+                Certificado
+            </button>
+            <button onclick="logout()" title="Sair"
+                class="opacity-30 hover:opacity-100 transition p-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="flex-1 container mx-auto px-8 py-12 main-pad">
+        <div class="glass rnd p-10 md:p-14 shadow-2xl">
+            <div class="flex justify-between items-start mb-10 gap-4 flex-wrap">
+                <div>
+                    <h2 class="text-3xl font-black italic uppercase tracking-tight mb-1">Matriz de Treino</h2>
+                    <p class="text-[9px] opacity-30 font-bold uppercase tracking-[.35em]">600 Módulos Sênior · Escalonamento Sequencial</p>
+                </div>
+                <span class="text-[9px] font-mono opacity-15 tracking-widest self-center">ENCRYPTION: AES-X-SENIOR</span>
+            </div>
+
+            <div id="node-grid"
+                class="grid gap-3 overflow-y-auto slim-scroll pr-3"
+                style="max-height:580px; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));">
+                <!-- nós gerados por JS -->
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ════════════════════════════════════
+     VIEW: MÓDULO
+════════════════════════════════════ -->
+<div id="view-module" class="view">
+
+    <nav class="glass border-0 border-b border-white/5 sticky top-0 z-50 px-10 py-6 nav-pad flex justify-between items-center">
+        <button onclick="showView('dashboard')"
+            class="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest hover:text-cyan-400 transition">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Mapa Global
+        </button>
+        <div class="text-center">
+            <p id="mod-cat" class="text-[9px] font-black text-cyan-400 uppercase tracking-widest mb-0.5">CAT</p>
+            <h3 id="mod-title" class="text-sm font-black uppercase tracking-tight">MÓDULO #000</h3>
+        </div>
+        <div class="w-28"></div>
+    </nav>
+
+    <main class="flex-1 container mx-auto px-8 py-12 main-pad flex flex-col lg:flex-row gap-10">
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <div class="flex-1 glass rnd p-10 md:p-14 shadow-2xl">
+            <h2 id="mod-h2" class="text-5xl font-extrabold italic tracking-tighter mb-8">Ferramenta</h2>
+            <div id="mod-desc" class="text-lg leading-relaxed opacity-70 font-light mb-10"></div>
+
+            <div class="terminal">
+                <p class="text-[10px] font-black text-cyan-400 uppercase tracking-[.35em] mb-5">Interface de Comandos</p>
+                <div id="mod-commands"></div>
+            </div>
+        </div>
+
+        <!-- PAINEL LATERAL -->
+        <div class="w-full lg:w-[380px] flex flex-col gap-8">
+
+            <!-- ACÇÕES -->
+            <div class="glass rnd2 p-8">
+                <p class="text-[9px] font-black uppercase tracking-widest opacity-35 mb-6">Recursos Técnicos</p>
+                <button onclick="downloadPDF()"
+                    class="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-left hover:border-cyan-400/40 transition-all mb-5 group">
+                    <p class="text-[10px] font-black text-cyan-400 mb-1 group-hover:underline">ESTUDO_SENIOR.PDF</p>
+                    <p class="text-[9px] opacity-40">Compêndio 3 páginas — Teoria, Ferramentas, Lab.</p>
+                </button>
+                <button onclick="openExam()" class="btn-cyan w-full py-5 rnd3 text-sm">Validar Conhecimento</button>
+            </div>
+
+            <!-- ORACLE AI CHAT -->
+            <div class="glass rnd2 p-8 flex flex-col" style="height:320px;">
+                <div class="flex justify-between items-center mb-5">
+                    <p class="text-[9px] font-black uppercase tracking-widest opacity-35">Oracle AI Support</p>
+                    <span class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,.6)]"></span>
+                </div>
+                <div id="chat-log"
+                    class="flex-1 overflow-y-auto slim-scroll flex flex-col gap-3 mb-4 pr-1">
+                    <div class="chat-msg chat-ai">Sincronizado. Qual a sua dúvida sobre esta ferramenta?</div>
+                </div>
+                <div class="flex gap-2 bg-black/40 p-2 rounded-2xl border border-white/10">
+                    <input id="chat-input" type="text" placeholder="Comando..."
+                        onkeydown="if(event.key==='Enter')askOracle()"
+                        class="flex-1 bg-transparent text-[11px] px-4 focus:outline-none font-mono"/>
+                    <button onclick="askOracle()"
+                        class="bg-cyan-500 text-black w-10 h-10 rounded-xl flex items-center justify-center hover:scale-105 transition">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                        </svg>
                     </button>
-                    <button onclick="go('v-exam')" class="w-full btn-blue py-4 text-xs">Validar Nó</button>
-                </div>
-                <div class="glass p-6 h-64 flex flex-col">
-                    <h3 class="text-[10px] font-bold opacity-30 mb-4 uppercase">Oracle AI</h3>
-                    <div id="chat" class="flex-1 overflow-y-auto text-[10px] space-y-4 mb-4 pr-1"></div>
-                    <div class="flex gap-2 bg-black/40 p-1 rounded-xl border border-white/10"><input type="text" id="chat-in" placeholder="..." class="flex-1 bg-transparent text-[10px] px-3 focus:outline-none"><button onclick="askAI()" class="bg-cyan-500 text-black px-3 py-1 rounded-lg text-[10px] font-bold">SEND</button></div>
                 </div>
             </div>
-        </div>
-    </section>
 
-    <!-- EXAM -->
-    <section id="v-exam" class="view items-center justify-center p-6 text-center">
-        <div class="glass p-12 max-w-2xl w-full">
-            <h2 class="text-3xl font-black mb-8 italic">Validação de Nó</h2>
-            <p class="text-lg font-bold opacity-60 mb-10">Qual o objetivo sênior desta ferramenta?</p>
-            <div class="grid gap-4">
-                <button onclick="pass()" class="p-6 border border-white/10 rounded-2xl hover:border-cyan-400 transition-all font-bold">A) Auditoria de segurança e resiliência de perímetro.</button>
-                <button onclick="alert('Incorreto.')" class="p-6 border border-white/10 rounded-2xl hover:border-red-500 transition-all font-bold">B) Gestão de equipas e marketing digital.</button>
+        </div>
+    </main>
+</div>
+
+<!-- ════════════════════════════════════
+     VIEW: EXAME
+════════════════════════════════════ -->
+<div id="view-exam" class="view view-center p-6">
+    <div class="glass rnd p-14 md:p-20 max-w-2xl w-full shadow-2xl fade-up">
+        <div class="flex items-center gap-4 mb-10">
+            <div class="w-1.5 h-12 bg-cyan-400 rounded-full"></div>
+            <h2 class="text-4xl font-black italic tracking-tight">Validação #<span id="exam-num">0</span></h2>
+        </div>
+        <p class="text-xl font-semibold opacity-80 leading-relaxed mb-10">
+            Qual o objectivo primordial da ferramenta em análise para operações de nível Sênior?
+        </p>
+        <div class="space-y-5">
+            <button onclick="completeModule()"
+                class="w-full p-7 rounded-[2rem] border border-white/10 hover:border-cyan-400 hover:bg-cyan-400/10 transition-all font-bold text-left text-base flex justify-between items-center group">
+                A) Auditoria de conformidade e mitigação de vulnerabilidades críticas.
+                <svg class="opacity-0 group-hover:opacity-100 text-cyan-400 flex-shrink-0 ml-4" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M20 6L9 17l-5-5"/>
+                </svg>
+            </button>
+            <button onclick="wrongAnswer()"
+                class="w-full p-7 rounded-[2rem] border border-white/10 hover:border-red-500 hover:bg-red-500/10 transition-all font-bold text-left text-base">
+                B) Automatização de tarefas básicas de secretariado digital.
+            </button>
+        </div>
+        <div class="mt-12 flex gap-5">
+            <button onclick="showView('module')"
+                class="btn-ghost px-8 py-4 rnd3 text-[9px]">Revisar Material</button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════
+     VIEW: CERTIFICADO
+════════════════════════════════════ -->
+<div id="view-cert" class="view view-center p-6 py-16">
+    <div id="cert-area" class="p-16 md:p-24 max-w-5xl w-full shadow-[0_40px_120px_rgba(0,0,0,.7)]">
+        <p class="text-blue-900 font-black uppercase tracking-[1.6em] text-[10px] mb-16 opacity-60">Cyber Nexus Academy</p>
+        <p class="italic text-2xl mb-6 opacity-65">Certificamos com distinção que o Agente</p>
+        <h1 id="cert-name" class="text-5xl md:text-7xl font-black border-b-4 border-black inline-block px-12 pb-5 mb-16 uppercase tracking-tighter">ALUNO</h1>
+        <p class="text-xl max-w-2xl mx-auto leading-relaxed mb-16 opacity-90 font-light">
+            concluiu a trilha sênior <strong>Omni-Sentinel</strong>, totalizando 600 módulos de
+            Hacking Ético, Defesa de Infraestrutura e Governança Digital de Elite.
+        </p>
+        <div class="flex justify-between items-end px-8 text-[11px] font-black">
+            <div class="text-left">
+                <p class="border-b-2 border-black pb-1 mb-1">ID: <span id="cert-id">NX-000000</span></p>
+                <p class="opacity-40 uppercase tracking-widest text-[9px]">Verificação de Nó</p>
+            </div>
+            <div class="text-right">
+                <p id="cert-date" class="border-b-2 border-black pb-1 mb-1">2026</p>
+                <p class="opacity-40 uppercase tracking-widest text-[9px]">Data de Emissão</p>
             </div>
         </div>
-    </section>
+    </div>
 
-    <!-- CERT -->
-    <section id="v-cert" class="view items-center justify-center">
-        <div id="cert" class="bg-white text-black p-20 rounded shadow-2xl border-[20px] border-double border-blue-900 max-w-4xl w-full text-center font-serif">
-            <h4 class="text-blue-900 font-bold uppercase tracking-widest text-[10px] mb-10">Cyber Nexus Academy</h4>
-            <p class="italic mb-4">Certificamos o Agente</p>
-            <h1 id="c-name" class="text-5xl font-black border-b-4 border-black inline-block px-10 pb-2 mb-10 font-sans italic"></h1>
-            <p class="text-lg max-w-xl mx-auto font-sans font-light">concluiu com êxito os 600 módulos da trilha <strong>Omni-Sentinel</strong>.</p>
-            <p class="mt-10 font-sans text-[10px] font-bold opacity-40">NX-SENIOR-77-VERIFIED</p>
-        </div>
-        <button onclick="window.print()" class="btn-blue mt-10">Imprimir</button>
-    </section>
+    <div class="mt-12 flex gap-6 no-print">
+        <button onclick="printCert()" class="btn-cyan px-16 py-5 rnd3 text-sm">Gerar PDF Oficial</button>
+        <button onclick="showView('dashboard')" class="btn-ghost px-10 py-5 rnd3 text-[9px]">Voltar</button>
+    </div>
+</div>
 
-    <script>
-        let state = { agent: "", done: [] }, curId = 0, nexus;
-        const TOOLS = [{n:"Nmap",c:"NETWORK",d:"Varredura furtiva e scripts NSE."}, {n:"Metasploit",c:"EXPLOIT",d:"Framework de intrusão industrial."}, {n:"Burp",c:"WEB",d:"Auditoria de tráfego HTTP/S."}, {n:"Wireshark",c:"INTEL",d:"Análise profunda de pacotes."}];
+<!-- ════════════════════════════════════
+     LÓGICA PRINCIPAL
+════════════════════════════════════ -->
+<script>
+// ── STORAGE ──────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'cybernexus_v1';
 
-        const go = id => { document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById(id).classList.add('active'); window.scrollTo(0,0); lucide.createIcons(); };
-        
-        const init3D = () => {
-            const s = new THREE.Scene(), c = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000), r = new THREE.WebGLRenderer({antialias:true,alpha:true});
-            r.setSize(innerWidth, innerHeight); document.getElementById('canvas-container').appendChild(r.domElement);
-            const l = new THREE.PointLight(0x00d2ff, 2, 100); l.position.set(20,20,20); s.add(l, new THREE.AmbientLight(0x111111));
-            c.position.z = 50;
-            const update = id => { if(nexus) s.remove(nexus); nexus = new THREE.Mesh(id%2?new THREE.TorusKnotGeometry(12,3,100,16):new THREE.IcosahedronGeometry(15,1), new THREE.MeshPhongMaterial({color:new THREE.Color(`hsl(${(id*137)%360},80%,60%)`),wireframe:true,transparent:true,opacity:0.15})); s.add(nexus); };
-            const anim = () => { requestAnimationFrame(anim); if(nexus){nexus.rotation.y+=0.002; nexus.rotation.x+=0.001;} r.render(s,c); };
-            window.update3D = update; anim(); update(0);
-        };
+function loadData() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+}
 
-        const doLogin = () => { let n = document.getElementById('agent-in').value.trim(); if(!n) return; state.agent = n.toUpperCase(); renderDash(); go('v-dash'); };
-        const renderDash = () => {
-            document.getElementById('n-name').innerText = state.agent;
-            document.getElementById('n-bar').style.width = (state.done.length/600*100)+'%';
-            document.getElementById('n-prog').innerText = `NÓS: ${state.done.length} / 600`;
-            let g = document.getElementById('grid'); g.innerHTML = "";
-            for(let i=1;i<=600;i++){
-                let d = state.done.includes(i), l = i>1 && !state.done.includes(i-1);
-                let b = document.createElement('div'); b.className = `node ${d?'completed':''} ${l?'locked':''}`; b.innerText = i;
-                b.onclick = () => !l && loadMod(i); g.appendChild(b);
-            }
-            if(state.done.length === 600) document.getElementById('n-cert').disabled = false;
-            document.getElementById('c-name').innerText = state.agent;
-        };
+function saveData(data) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
 
-        const loadMod = id => {
-            curId = id; update3D(id); let t = TOOLS[id%TOOLS.length];
-            document.getElementById('m-id').innerText = `ESTAÇÃO #${id}`; document.getElementById('m-cat').innerText = t.c;
-            document.getElementById('m-title').innerText = `Mastering ${t.n}`;
-            document.getElementById('m-body').innerText = `${t.d} Nesta lição nível sénior, focamos na manipulação de cabeçalhos e evasão de telemetria.`;
-            document.getElementById('m-cmds').innerHTML = `<div class="bg-black/30 p-4 rounded-xl border border-white/5 text-cyan-400">$ ${t.n.toLowerCase()} -scan -A target</div>`;
-            go('v-mod');
-        };
+// ── ESTADO ───────────────────────────────────────────────────────────────────
+let userData = null;   // { name, completed: [] }
+let activeModule = null; // { id, name, cat, desc, commands }
 
-        const pass = () => { if(!state.done.includes(curId)) state.done.push(curId); renderDash(); go('v-dash'); update3D(0); };
-        
-        const makePDF = () => {
-            const d = new window.jspdf.jsPDF(); d.setFillColor(2,4,12); d.rect(0,0,210,297,'F');
-            d.setTextColor(0,210,255); d.setFontSize(22); d.text("CYBER NEXUS DATA", 20, 30);
-            d.setTextColor(255,255,255); d.setFontSize(12); d.text(`Aula #${curId}: Teoria e Pratica Profissional`, 20, 45);
-            d.save(`Nexus_Node_${curId}.pdf`);
-        };
+// ── FERRAMENTAS (ciclo para 600 nós) ─────────────────────────────────────────
+const TOOLS = [
+    {
+        name: "Nmap Advanced",
+        cat: "AUDITORIA DE REDE",
+        desc: "Varredura furtiva e análise de scripts NSE para descoberta de falhas críticas em nível de protocolo. Permite mapear topologias completas de rede e identificar serviços expostos em sistemas de alta segurança.",
+        commands: [
+            "nmap -sS -A -T4 -p- <target>",
+            "nmap --script vulners,exploit -sV <target>",
+            "nmap -O --osscan-guess <target>"
+        ]
+    },
+    {
+        name: "Metasploit Framework",
+        cat: "EXPLORAÇÃO OFENSIVA",
+        desc: "Framework industrial para orquestração de intrusões simuladas, escalada de privilégios e pós-exploração em infraestruturas corporativas. Inclui mais de 2000 módulos de exploits activos.",
+        commands: [
+            "msfconsole -q -x 'db_nmap -sV <target>'",
+            "use exploit/multi/handler",
+            "sessions -u -1"
+        ]
+    },
+    {
+        name: "Burp Suite Pro",
+        cat: "SEGURANÇA WEB",
+        desc: "Intercepção e manipulação de tráfego HTTP/S para descoberta de falhas de lógica de negócio, injecções e vulnerabilidades OWASP Top 10 em sistemas web dinâmicos de produção.",
+        commands: [
+            "Proxy → Intercept ON",
+            "Intruder → Payload: Sniper",
+            "Scanner → Active Scan (all params)"
+        ]
+    },
+    {
+        name: "Wireshark Intel",
+        cat: "ANÁLISE DE TRÁFEGO",
+        desc: "Investigação profunda de pacotes para detecção de exfiltração de dados, ataques man-in-the-middle e intrusões em canais de comunicação aparentemente isolados.",
+        commands: [
+            "ip.addr == 10.0.0.1 && tcp",
+            "http.request.method == 'POST'",
+            "frame contains 'password'"
+        ]
+    },
+    {
+        name: "Hashcat Ultra",
+        cat: "CRIPTOANÁLISE",
+        desc: "Motor GPU de alta performance para auditoria de credenciais, quebra de algoritmos de hashing modernos (bcrypt, SHA-512, NTLM) e análise de políticas de password corporativas.",
+        commands: [
+            "hashcat -m 1000 hashes.txt rockyou.txt",
+            "hashcat -m 1800 -a 3 hash.txt ?a?a?a?a?a?a",
+            "hashcat --benchmark"
+        ]
+    }
+];
 
-        const askAI = async () => {
-            let i = document.getElementById('chat-in'), q = i.value.trim(), f = document.getElementById('chat'); if(!q) return;
-            f.innerHTML += `<div class="opacity-40 text-right">Op: ${q}</div>`; i.value = "";
-            try {
-                let res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=`, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({contents:[{parts:[{text:q}]}], systemInstruction:{parts:[{text:"Es o Oracle, mentor senior de segurança. Respostas tecnicas e curtas."}]}})});
-                let d = await res.json(); f.innerHTML += `<div class="text-cyan-400">Oracle: ${d.candidates[0].content.parts[0].text}</div>`; f.scrollTop = f.scrollHeight;
-            } catch(e){}
-        };
+function getTool(id) {
+    return TOOLS[(id - 1) % TOOLS.length];
+}
 
-        window.onload = init3D;
-    </script>
+// ── VIEWS ─────────────────────────────────────────────────────────────────────
+function showView(name) {
+    document.querySelectorAll('.view').forEach(v => {
+        v.classList.remove('active');
+    });
+    const el = document.getElementById('view-' + name);
+    if (el) {
+        el.classList.add('active');
+        // re-trigger fade-up
+        el.querySelectorAll('.fade-up').forEach(f => {
+            f.style.animation = 'none';
+            void f.offsetWidth;
+            f.style.animation = '';
+        });
+    }
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+function handleLogin() {
+    const input = document.getElementById('input-name');
+    const name = input.value.trim();
+    if (!name) {
+        input.style.borderColor = 'rgba(239,68,68,.7)';
+        setTimeout(() => input.style.borderColor = '', 1200);
+        return;
+    }
+
+    const existing = loadData();
+    if (existing && existing.name === name.toUpperCase()) {
+        userData = existing;
+    } else {
+        userData = { name: name.toUpperCase(), completed: [], joinedAt: new Date().toISOString() };
+        saveData(userData);
+    }
+
+    renderDashboard();
+    showView('dashboard');
+}
+
+document.getElementById('input-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleLogin();
+});
+
+// ── LOGOUT ────────────────────────────────────────────────────────────────────
+function logout() {
+    userData = null;
+    activeModule = null;
+    document.getElementById('input-name').value = '';
+    showView('login');
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDashboard() {
+    if (!userData) return;
+
+    const prog = userData.completed.length;
+    const pct  = (prog / 600) * 100;
+
+    document.getElementById('nav-user').textContent  = userData.name;
+    document.getElementById('nav-nodes').textContent = `NÓS: ${prog} / 600`;
+    document.getElementById('nav-prog-bar').style.width = pct + '%';
+
+    const certBtn = document.getElementById('btn-cert');
+    certBtn.disabled = prog < 600;
+
+    // Grid
+    const grid = document.getElementById('node-grid');
+    grid.innerHTML = '';
+
+    for (let i = 1; i <= 600; i++) {
+        const isDone   = userData.completed.includes(i);
+        const isLocked = i > 1 && !userData.completed.includes(i - 1);
+
+        const btn = document.createElement('button');
+        btn.className = 'node-btn' + (isDone ? ' done' : '') + (isLocked ? ' locked' : '');
+        btn.textContent = i;
+        btn.title = getTool(i).name + ' · Nó #' + i;
+
+        if (!isLocked) {
+            btn.addEventListener('click', () => openModule(i));
+        }
+        grid.appendChild(btn);
+    }
+}
+
+// ── MÓDULO ────────────────────────────────────────────────────────────────────
+function openModule(id) {
+    const tool = getTool(id);
+    activeModule = { id, ...tool };
+
+    document.getElementById('mod-cat').textContent   = tool.cat;
+    document.getElementById('mod-title').textContent = `MÓDULO #${String(id).padStart(3,'0')}`;
+    document.getElementById('mod-h2').textContent    = tool.name;
+    document.getElementById('mod-desc').innerHTML    =
+        `<p>${tool.desc}</p>
+         <p style="margin-top:.9rem; opacity:.6; font-size:.95rem;">
+           Nesta fase, exploramos a profundidade estratégica do <strong>${tool.name}</strong>.
+           O foco reside na automatização de auditorias e na análise de vulnerabilidades
+           invisíveis em perímetros de alta segurança.
+         </p>`;
+
+    const cmdEl = document.getElementById('mod-commands');
+    cmdEl.innerHTML = tool.commands.map(c => `<div class="cmd-line">$ ${c}</div>`).join('');
+
+    // Reset chat
+    const chatLog = document.getElementById('chat-log');
+    chatLog.innerHTML = `<div class="chat-msg chat-ai">Sincronizado para <strong>${tool.name}</strong>. Qual a sua dúvida?</div>`;
+
+    // Actualizar 3D
+    update3DShape(id);
+
+    showView('module');
+}
+
+// ── EXAME ─────────────────────────────────────────────────────────────────────
+function openExam() {
+    if (!activeModule) return;
+    document.getElementById('exam-num').textContent = String(activeModule.id).padStart(3, '0');
+    showView('exam');
+}
+
+function completeModule() {
+    if (!activeModule || !userData) return;
+
+    if (!userData.completed.includes(activeModule.id)) {
+        userData.completed.push(activeModule.id);
+        saveData(userData);
+    }
+
+    renderDashboard();
+    showView('dashboard');
+
+    // Flash de sucesso
+    setTimeout(() => {
+        const node = document.querySelector(`#node-grid .node-btn:nth-child(${activeModule.id})`);
+        if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+}
+
+function wrongAnswer() {
+    const btns = document.querySelectorAll('#view-exam button');
+    btns[1].style.borderColor = 'rgba(239,68,68,.8)';
+    btns[1].style.background  = 'rgba(239,68,68,.08)';
+    setTimeout(() => {
+        btns[1].style.borderColor = '';
+        btns[1].style.background  = '';
+    }, 1200);
+}
+
+// ── ORACLE AI CHAT ────────────────────────────────────────────────────────────
+async function askOracle() {
+    const input = document.getElementById('chat-input');
+    const q = input.value.trim();
+    if (!q) return;
+    input.value = '';
+
+    const log = document.getElementById('chat-log');
+
+    const userMsg = document.createElement('div');
+    userMsg.className = 'chat-msg chat-user';
+    userMsg.textContent = q;
+    log.appendChild(userMsg);
+    log.scrollTop = log.scrollHeight;
+
+    const thinking = document.createElement('div');
+    thinking.className = 'chat-msg chat-ai';
+    thinking.textContent = '...';
+    log.appendChild(thinking);
+    log.scrollTop = log.scrollHeight;
+
+    try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 1000,
+                system: `És o Oracle da Cyber Nexus Academy. Mentor de segurança ofensiva sênior. Respostas técnicas, concisas, sem emojis. Módulo actual: ${activeModule ? activeModule.name : 'Geral'}.`,
+                messages: [{ role: 'user', content: q }]
+            })
+        });
+        const data = await res.json();
+        const reply = data.content?.[0]?.text || 'Falha de comunicação.';
+        thinking.textContent = reply;
+    } catch {
+        thinking.textContent = 'Erro ao contactar o núcleo Oracle.';
+    }
+
+    log.scrollTop = log.scrollHeight;
+}
+
+// ── DOWNLOAD PDF ──────────────────────────────────────────────────────────────
+function downloadPDF() {
+    if (!window.jspdf || !activeModule) {
+        alert('A aguardar o motor de PDF...');
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const tool = activeModule;
+
+    const darkBg = () => { doc.setFillColor(1, 4, 10); doc.rect(0, 0, 210, 297, 'F'); };
+
+    // Página 1 – Teoria
+    darkBg();
+    doc.setTextColor(0, 210, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CYBER NEXUS ACADEMY', 20, 28);
+    doc.setFontSize(13);
+    doc.text(`MÓDULO #${String(tool.id).padStart(3,'0')}: ${tool.name.toUpperCase()}`, 20, 42);
+    doc.setDrawColor(0, 210, 255);
+    doc.setLineWidth(.4);
+    doc.line(20, 48, 190, 48);
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PÁGINA 1 — TEORIA E CONTEXTUALIZAÇÃO', 20, 62);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const desc = doc.splitTextToSize(tool.desc, 170);
+    doc.text(desc, 20, 74);
+
+    // Página 2 – Comandos
+    doc.addPage(); darkBg();
+    doc.setTextColor(0, 210, 255);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PÁGINA 2 — COMANDOS E IMPLEMENTAÇÃO', 20, 30);
+    doc.setLineWidth(.4);
+    doc.line(20, 36, 190, 36);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont('courier', 'normal');
+    tool.commands.forEach((cmd, i) => {
+        doc.setFillColor(10, 20, 30);
+        doc.roundedRect(20, 48 + i * 22, 170, 14, 2, 2, 'F');
+        doc.setTextColor(0, 210, 255);
+        doc.text(`$ ${cmd}`, 26, 57 + i * 22);
+    });
+
+    // Página 3 – Lab
+    doc.addPage(); darkBg();
+    doc.setTextColor(0, 210, 255);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PÁGINA 3 — LABORATÓRIO DE CAMPO', 20, 30);
+    doc.line(20, 36, 190, 36);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const lab = doc.splitTextToSize(
+        `Cenário: Identificação de exfiltração de dados numa rede corporativa isolada utilizando ${tool.name}.\n\n` +
+        `Objectivo: Detectar, registar e reportar a actividade maliciosa sem alertar o atacante.\n\n` +
+        `Metodologia:\n` +
+        `1. Reconhecimento passivo do perímetro de rede.\n` +
+        `2. Aplicação dos comandos listados na Página 2.\n` +
+        `3. Análise de anomalias e geração de relatório técnico.\n` +
+        `4. Proposta de mitigação e hardening pós-incidente.`,
+        170
+    );
+    doc.text(lab, 20, 50);
+
+    doc.save(`CyberNexus_Modulo_${tool.id}_${tool.name.replace(/\s+/g,'_')}.pdf`);
+}
+
+// ── CERTIFICADO ───────────────────────────────────────────────────────────────
+function showCert() {
+    if (!userData) return;
+    document.getElementById('cert-name').textContent = userData.name;
+    document.getElementById('cert-id').textContent   = 'NX-' + String(Math.abs(hashStr(userData.name))).slice(0,6);
+    document.getElementById('cert-date').textContent = new Date().toLocaleDateString('pt-PT', { year:'numeric', month:'long', day:'numeric' });
+    showView('cert');
+}
+
+function printCert() { window.print(); }
+
+function hashStr(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+    return h >>> 0;
+}
+
+// ── THREE.JS BACKGROUND ───────────────────────────────────────────────────────
+(function() {
+    const canvas   = document.getElementById('canvas-bg');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const scene  = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 45;
+
+    const light = new THREE.PointLight(0x00d2ff, 2.2, 150);
+    light.position.set(25, 25, 25);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0x0a0a0a));
+
+    const mat = new THREE.MeshPhongMaterial({
+        color: 0x00d2ff, wireframe: true, transparent: true, opacity: 0.12
+    });
+
+    let mesh;
+    const shapes = [
+        new THREE.IcosahedronGeometry(14, 1),
+        new THREE.TorusKnotGeometry(9, 2.5, 100, 16),
+        new THREE.OctahedronGeometry(13, 2)
+    ];
+
+    window.update3DShape = function(id) {
+        if (mesh) scene.remove(mesh);
+        const geo = shapes[(id - 1) % shapes.length];
+        mesh = new THREE.Mesh(geo, mat.clone());
+        scene.add(mesh);
+    };
+
+    // Forma inicial
+    mesh = new THREE.Mesh(shapes[0], mat.clone());
+    scene.add(mesh);
+
+    (function animate() {
+        requestAnimationFrame(animate);
+        if (mesh) {
+            mesh.rotation.y += .0018;
+            mesh.rotation.x += .0009;
+        }
+        renderer.render(scene, camera);
+    })();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+})();
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const saved = loadData();
+        if (saved && saved.name) {
+            userData = saved;
+            renderDashboard();
+            showView('dashboard');
+        } else {
+            showView('login');
+        }
+    }, 900);
+});
+
+// Expor funções para onclick inline
+window.handleLogin    = handleLogin;
+window.logout         = logout;
+window.openExam       = openExam;
+window.completeModule = completeModule;
+window.wrongAnswer    = wrongAnswer;
+window.askOracle      = askOracle;
+window.downloadPDF    = downloadPDF;
+window.showView       = showView;
+window.printCert      = printCert;
+</script>
 </body>
-                                                                                                                     </html>
+</html>
